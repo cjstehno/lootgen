@@ -1,6 +1,8 @@
-import docopt, tables, hashes, strutils, parseutils
+import docopt, tables, hashes, strutils, parseutils, random
 import polydicepkg/dice
 import streams, strutils
+
+randomize()
 
 let doc = """
 A tool for generating random 5e treasure.
@@ -8,7 +10,8 @@ A tool for generating random 5e treasure.
 Usage:
     lootgen individual [-n=<num>] (-c=<CR> | --cr=<CR>)
     lootgen coins [-n=<num>] <dice>
-    lootgen art [-n=<num>] (25 | 250 | 750 | 2500 | 7500)
+    lootgen art [-n=<num>] [25 | 250 | 750 | 2500 | 7500]
+    lootgen gems [-n=<num>] [10 | 50 | 100 | 500 | 1000 | 5000]
     lootgen (-h | --help)
     lootgen --version
 
@@ -29,6 +32,13 @@ const art_250 = staticRead"../tables/art-250gp.csv"
 const art_750 = staticRead"../tables/art-750gp.csv"
 const art_2500 = staticRead"../tables/art-2500gp.csv"
 const art_7500 = staticRead"../tables/art-7500gp.csv"
+
+const gems_10 = staticRead"../tables/gems-10gp.csv"
+const gems_50 = staticRead"../tables/gems-50gp.csv"
+const gems_100 = staticRead"../tables/gems-100gp.csv"
+const gems_500 = staticRead"../tables/gems-500gp.csv"
+const gems_1000 = staticRead"../tables/gems-1000gp.csv"
+const gems_5000 = staticRead"../tables/gems-5000gp.csv"
 
 # TODO: move the table stuff into separate file
 
@@ -119,10 +129,15 @@ proc rollCoins(dice: string): Treasure =
     )
 
 proc rollArt(artTable: string, artValue: uint): Treasure =
-    let roll = rolling(1, 10, 0).value
-    let selectedItem = select(artTable, roll)
+    let selectedItem = select(artTable, rolling(1, 10, 0).value)
     result.art = {
         Valuable(value: artValue, description: selectedItem): 1.uint8
+    }.toTable
+
+proc rollGems(gemTable: string, gemValue: uint, dice: string): Treasure =
+    let selectedItem = select(gemTable, roll(dice).value)
+    result.gems = {
+        Valuable(value: gemValue, description: selectedItem): 1.uint8
     }.toTable
 
 let args = docopt(doc, version = "Lootgen v0.1.0")
@@ -140,16 +155,43 @@ elif args["coins"]:
         echo rollCoins(dice)
 
 elif args["art"]:
-    var (artTable, value) = if args["250"]:
-        (art_250, 250)
-    elif args["750"]:
-        (art_750, 750)
-    elif args["2500"]:
-        (art_2500, 2500)
-    elif args["7500"]:
-        (art_7500, 7500)
-    else:
-        (art_25, 25)
+    let artTables = {
+        25: art_25,
+        250: art_250,
+        750: art_750,
+        2500: art_2500,
+        7500: art_7500
+    }.toTable
+
+    var artValue = if args["25"]: 25
+    elif args["250"]: 250
+    elif args["750"]: 750
+    elif args["2500"]: 2500
+    elif args["7500"]: 7500
+    else: sample({25, 250, 750, 2500, 7500})
 
     for x in 0..(n-1):
-        echo rollArt(artTable, value.uint)
+        echo rollArt(artTables[artValue], artValue.uint)
+
+elif args["gems"]:
+    let gemTables = {
+        10: (gems_10, "d12"),
+        50: (gems_50, "d12"),
+        100: (gems_100, "d10"),
+        500: (gems_500, "d6"),
+        1000: (gems_1000, "d8"),
+        5000: (gems_5000, "d4")
+    }.toTable
+
+    var gemValue = if args["10"]: 10
+    elif args["50"] : 50
+    elif args["100"]: 100
+    elif args["500"]: 500
+    elif args["1000"]: 1000
+    elif args["5000"]: 5000
+    else: sample({10, 50, 100, 500, 1000, 5000})
+
+    let (gemTable, gemDice) = gemTables[gemValue]
+
+    for x in 0..(n-1):
+        echo rollGems(gemTable, gemValue.uint, gemDice)
