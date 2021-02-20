@@ -1,4 +1,4 @@
-import docopt, tables, strutils, parseutils
+import docopt, tables, hashes, strutils, parseutils
 import polydicepkg/dice
 import streams, strutils
 
@@ -8,6 +8,7 @@ A tool for generating random 5e treasure.
 Usage:
     lootgen individual [-n=<num>] (-c=<CR> | --cr=<CR>)
     lootgen coins [-n=<num>] <dice>
+    lootgen art [-n=<num>] (25 | 250 | 750 | 2500 | 7500)
     lootgen (-h | --help)
     lootgen --version
 
@@ -22,6 +23,12 @@ const individual_0_4 = staticRead"../tables/individual-0-4.csv"
 const individual_5_10 = staticRead"../tables/individual-5-10.csv"
 const individual_11_16 = staticRead"../tables/individual-11-16.csv"
 const individual_17_up = staticRead"../tables/individual-17-up.csv"
+
+const art_25 = staticRead"../tables/art-25gp.csv"
+const art_250 = staticRead"../tables/art-250gp.csv"
+const art_750 = staticRead"../tables/art-750gp.csv"
+const art_2500 = staticRead"../tables/art-2500gp.csv"
+const art_7500 = staticRead"../tables/art-7500gp.csv"
 
 # TODO: move the table stuff into separate file
 
@@ -43,11 +50,15 @@ type
         art:  Table[Valuable, uint8]
         magic: Table[Valuable, uint8]
 
+proc hash(x: Valuable): Hash =
+    result = x.description.hash
+
 proc stripIndex(line: string): string =
     substr(line, find(line, ",")+1)
 
 proc isSelected(line: string, d:int): bool =
-    let lowHigh = substr(line, 0, find(line, ",")-1).split("-")
+    let index = substr(line, 0, find(line, ",")-1)
+    let lowHigh = if index.contains("-"): index.split("-") else: @[index,index]
     d >= parseInt(lowHigh[0]) and d <= parseInt(lowHigh[1])
 
 proc select(treasureTable: string, d: int): string =
@@ -107,6 +118,13 @@ proc rollCoins(dice: string): Treasure =
         pp: if includeItem(): rollForItem(dice) else: 0
     )
 
+proc rollArt(artTable: string, artValue: uint): Treasure =
+    let roll = rolling(1, 10, 0).value
+    let selectedItem = select(artTable, roll)
+    result.art = {
+        Valuable(value: artValue, description: selectedItem): 1.uint8
+    }.toTable
+
 let args = docopt(doc, version = "Lootgen v0.1.0")
 
 let n = if args["-n"]: parseInt($args["-n"]) else: 1
@@ -120,3 +138,18 @@ elif args["coins"]:
     let dice = $args["<dice>"]
     for x in 0..(n-1):
         echo rollCoins(dice)
+
+elif args["art"]:
+    var (artTable, value) = if args["250"]:
+        (art_250, 250)
+    elif args["750"]:
+        (art_750, 750)
+    elif args["2500"]:
+        (art_2500, 2500)
+    elif args["7500"]:
+        (art_7500, 7500)
+    else:
+        (art_25, 25)
+
+    for x in 0..(n-1):
+        echo rollArt(artTable, value.uint)
