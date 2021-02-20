@@ -12,3 +12,5 @@ bin           = @["lootgen"]
 # Dependencies
 
 requires "nim >= 1.2.6"
+requires "docopt >= 0.6.7"
+requires "polydice >= 0.1.0"
