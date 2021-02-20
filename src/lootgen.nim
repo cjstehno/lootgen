@@ -7,6 +7,7 @@ A tool for generating random 5e treasure.
 
 Usage:
     lootgen individual [-n=<num>] (-c=<CR> | --cr=<CR>)
+    lootgen coins [-n=<num>] <dice>
     lootgen (-h | --help)
     lootgen --version
 
@@ -23,6 +24,24 @@ const individual_11_16 = staticRead"../tables/individual-11-16.csv"
 const individual_17_up = staticRead"../tables/individual-17-up.csv"
 
 # TODO: move the table stuff into separate file
+
+type
+    Coins = object
+        cp: uint
+        sp: uint
+        ep: uint
+        gp: uint
+        pp: uint
+
+    Valuable = object
+        value: uint
+        description: string
+
+    Treasure = object
+        coins: Coins
+        gems: Table[Valuable, uint8]
+        art:  Table[Valuable, uint8]
+        magic: Table[Valuable, uint8]
 
 proc stripIndex(line: string): string =
     substr(line, find(line, ",")+1)
@@ -45,26 +64,6 @@ proc select(treasureTable: string, d: int): string =
       strm.close()
       return selectedLine
 
-type
-    Coins = object
-        cp: uint
-        sp: uint
-        ep: uint
-        gp: uint
-        pp: uint
-
-    Valuable = object
-        value: uint
-        description: string
-
-    Treasure = object
-        coins: Coins
-        gems: Table[Valuable, uint8]
-        art:  Table[Valuable, uint8]
-        magic: Table[Valuable, uint8]
-
-
-
 proc rollForItem(defn: string): uint =
     if defn == "-":
         return 0
@@ -74,7 +73,7 @@ proc rollForItem(defn: string): uint =
         let multiplier = if diceMult.len > 1: parseInt(diceMult[1]) else: 1
         return (rolled.value * multiplier).uint
 
-proc rollIndividual(n:int, cr:uint8): Treasure =
+proc rollIndividual(cr:uint8): Treasure =
     let selectedTable = if cr < 5:
         individual_0_4
     elif cr < 11:
@@ -96,12 +95,28 @@ proc rollIndividual(n:int, cr:uint8): Treasure =
     )
     return result
 
+proc includeItem(): bool =
+    rolling(1, 2, 0).value == 1
+
+proc rollCoins(dice: string): Treasure =
+    result.coins = Coins(
+        cp: if includeItem(): rollForItem(dice) else: 0,
+        sp: if includeItem(): rollForItem(dice) else: 0,
+        ep: if includeItem(): rollForItem(dice) else: 0,
+        gp: if includeItem(): rollForItem(dice) else: 0,
+        pp: if includeItem(): rollForItem(dice) else: 0
+    )
+
 let args = docopt(doc, version = "Lootgen v0.1.0")
 
 let n = if args["-n"]: parseInt($args["-n"]) else: 1
 
 if args["individual"]:
     let cr = parseUInt($args["--cr"]).uint8
-
     for x in 0..(n-1):
-        echo rollIndividual(n, cr)
+        echo rollIndividual(cr)
+
+elif args["coins"]:
+    let dice = $args["<dice>"]
+    for x in 0..(n-1):
+        echo rollCoins(dice)
