@@ -9,9 +9,11 @@ A tool for generating random 5e treasure.
 
 Usage:
     lootgen individual [-n=<num>] (-c=<CR> | --cr=<CR>)
+    lootgen hoard [-n=<num>] (-c=<CR> | --cr=<CR>)
     lootgen coins [-n=<num>] <dice>
     lootgen art [-n=<num>] [25 | 250 | 750 | 2500 | 7500]
     lootgen gems [-n=<num>] [10 | 50 | 100 | 500 | 1000 | 5000]
+    lootgen magic [-n=<num>] [<table>]
     lootgen (-h | --help)
     lootgen --version
 
@@ -40,6 +42,16 @@ const gems_500 = staticRead"../tables/gems-500gp.csv"
 const gems_1000 = staticRead"../tables/gems-1000gp.csv"
 const gems_5000 = staticRead"../tables/gems-5000gp.csv"
 
+const magic_a = staticRead"../tables/magic-A.csv"
+const magic_b = staticRead"../tables/magic-B.csv"
+const magic_c = staticRead"../tables/magic-C.csv"
+const magic_d = staticRead"../tables/magic-D.csv"
+const magic_e = staticRead"../tables/magic-E.csv"
+const magic_f = staticRead"../tables/magic-F.csv"
+const magic_g = staticRead"../tables/magic-G.csv"
+const magic_h = staticRead"../tables/magic-H.csv"
+const magic_i = staticRead"../tables/magic-I.csv"
+
 # TODO: move the table stuff into separate file
 
 type
@@ -59,6 +71,7 @@ type
         gems: Table[Valuable, uint8]
         art:  Table[Valuable, uint8]
         magic: Table[Valuable, uint8]
+
 
 proc hash(x: Valuable): Hash =
     result = x.description.hash
@@ -140,6 +153,12 @@ proc rollGems(gemTable: string, gemValue: uint, dice: string): Treasure =
         Valuable(value: gemValue, description: selectedItem): 1.uint8
     }.toTable
 
+proc rollMagic(magicTable: string): Treasure =
+    let selectedItem = select(magicTable, rolling(1, 100, 0).value)
+    result.magic = {
+        Valuable(description: selectedItem): 1.uint8
+    }.toTable
+
 let args = docopt(doc, version = "Lootgen v0.1.0")
 
 let n = if args["-n"]: parseInt($args["-n"]) else: 1
@@ -183,7 +202,7 @@ elif args["gems"]:
         5000: (gems_5000, "d4")
     }.toTable
 
-    var gemValue = if args["10"]: 10
+    let gemValue = if args["10"]: 10
     elif args["50"] : 50
     elif args["100"]: 100
     elif args["500"]: 500
@@ -195,3 +214,21 @@ elif args["gems"]:
 
     for x in 0..(n-1):
         echo rollGems(gemTable, gemValue.uint, gemDice)
+
+elif args["magic"]:
+    let magicTables = {
+        "a": magic_a,
+        "b": magic_b,
+        "c": magic_c,
+        "d": magic_d,
+        "e": magic_e,
+        "f": magic_f,
+        "g": magic_g,
+        "h": magic_h,
+        "i": magic_i
+    }.toTable
+
+    let magicTable = if args["<table>"]: $args["<table>"] else: sample(["a", "b", "c", "d", "e", "f", "g", "h", "i"])
+
+    for x in 0..(n-1):
+        echo rollMagic(magicTables[magicTable])
