@@ -75,28 +75,6 @@ type
 proc hash(x: Valuable): Hash =
     result = x.description.hash
 
-#proc stripIndex(line: string): string =
-#    substr(line, find(line, ",")+1)
-#
-#proc isSelected(line: string, d:int): bool =
-#    let index = substr(line, 0, find(line, ",")-1)
-#    let lowHigh = if index.contains("-"): index.split("-") else: @[index,index]
-#    d >= parseInt(lowHigh[0]) and d <= parseInt(lowHigh[1])
-#
-#proc select(treasureTable: string, d: int): string =
-#      var selectedLine = "?"
-#      var strm = newStringStream(treasureTable)
-#
-#      # skip the header
-#      discard strm.readLine()
-#
-#      for line in lines(strm):
-#          if (not isEmptyOrWhitespace(line)) and isSelected(line, d):
-#              selectedLine = stripIndex(line)
-#              break
-#      strm.close()
-#      return selectedLine
-
 proc rollForItem(defn: string): uint =
     if defn == "-":
         return 0
@@ -145,7 +123,7 @@ proc rollArt(artTable: string, artValue: uint): Treasure =
         Valuable(value: artValue, description: selectedItem): 1.uint8
     }.toTable
 
-proc rollGems(gemTable: string, gemValue: uint, dice: string): Treasure =
+proc rollGems(gemTable: string, gemValue: uint): Treasure =
     let selectedItem = selectRowLine(gemTable)
     result.gems = {
         Valuable(value: gemValue, description: selectedItem): 1.uint8
@@ -192,12 +170,12 @@ elif args["art"]:
 
 elif args["gems"]:
     let gemTables = {
-        10: (gems_10, "d12"),
-        50: (gems_50, "d12"),
-        100: (gems_100, "d10"),
-        500: (gems_500, "d6"),
-        1000: (gems_1000, "d8"),
-        5000: (gems_5000, "d4")
+        10: gems_10,
+        50: gems_50,
+        100: gems_100,
+        500: gems_500,
+        1000: gems_1000,
+        5000: gems_5000
     }.toTable
 
     let gemValue = if args["10"]: 10
@@ -208,10 +186,9 @@ elif args["gems"]:
     elif args["5000"]: 5000
     else: sample({10, 50, 100, 500, 1000, 5000})
 
-    let (gemTable, gemDice) = gemTables[gemValue]
-
+    let gemTable = gemTables[gemValue]
     for x in 0..(n-1):
-        echo rollGems(gemTable, gemValue.uint, gemDice)
+        echo rollGems(gemTable, gemValue.uint)
 
 elif args["magic"]:
     let magicTables = {
