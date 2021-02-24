@@ -1,5 +1,6 @@
 import docopt, tables, hashes, strutils, parseutils, random
 import polydicepkg/dice
+import gametablespkg/tableselector
 import streams, strutils
 
 randomize()
@@ -52,8 +53,6 @@ const magic_g = staticRead"../tables/magic-G.csv"
 const magic_h = staticRead"../tables/magic-H.csv"
 const magic_i = staticRead"../tables/magic-I.csv"
 
-# TODO: move the table stuff into separate file
-
 type
     Coins = object
         cp: uint
@@ -76,27 +75,27 @@ type
 proc hash(x: Valuable): Hash =
     result = x.description.hash
 
-proc stripIndex(line: string): string =
-    substr(line, find(line, ",")+1)
-
-proc isSelected(line: string, d:int): bool =
-    let index = substr(line, 0, find(line, ",")-1)
-    let lowHigh = if index.contains("-"): index.split("-") else: @[index,index]
-    d >= parseInt(lowHigh[0]) and d <= parseInt(lowHigh[1])
-
-proc select(treasureTable: string, d: int): string =
-      var selectedLine = "?"
-      var strm = newStringStream(treasureTable)
-
-      # skip the header
-      discard strm.readLine()
-
-      for line in lines(strm):
-          if (not isEmptyOrWhitespace(line)) and isSelected(line, d):
-              selectedLine = stripIndex(line)
-              break
-      strm.close()
-      return selectedLine
+#proc stripIndex(line: string): string =
+#    substr(line, find(line, ",")+1)
+#
+#proc isSelected(line: string, d:int): bool =
+#    let index = substr(line, 0, find(line, ",")-1)
+#    let lowHigh = if index.contains("-"): index.split("-") else: @[index,index]
+#    d >= parseInt(lowHigh[0]) and d <= parseInt(lowHigh[1])
+#
+#proc select(treasureTable: string, d: int): string =
+#      var selectedLine = "?"
+#      var strm = newStringStream(treasureTable)
+#
+#      # skip the header
+#      discard strm.readLine()
+#
+#      for line in lines(strm):
+#          if (not isEmptyOrWhitespace(line)) and isSelected(line, d):
+#              selectedLine = stripIndex(line)
+#              break
+#      strm.close()
+#      return selectedLine
 
 proc rollForItem(defn: string): uint =
     if defn == "-":
@@ -117,8 +116,7 @@ proc rollIndividual(cr:uint8): Treasure =
     else:
         individual_17_up
 
-    let d100 = rolling(1, 100, 0).value
-    let selectedLine = select(selectedTable, d100)
+    let selectedLine = selectRowLine(selectedTable)
     let parts = selectedLine.split(",")
     result.coins = Coins(
         cp: rollForItem(parts[0]),
@@ -142,19 +140,19 @@ proc rollCoins(dice: string): Treasure =
     )
 
 proc rollArt(artTable: string, artValue: uint): Treasure =
-    let selectedItem = select(artTable, rolling(1, 10, 0).value)
+    let selectedItem = selectRowLine(artTable)
     result.art = {
         Valuable(value: artValue, description: selectedItem): 1.uint8
     }.toTable
 
 proc rollGems(gemTable: string, gemValue: uint, dice: string): Treasure =
-    let selectedItem = select(gemTable, roll(dice).value)
+    let selectedItem = selectRowLine(gemTable)
     result.gems = {
         Valuable(value: gemValue, description: selectedItem): 1.uint8
     }.toTable
 
 proc rollMagic(magicTable: string): Treasure =
-    let selectedItem = select(magicTable, rolling(1, 100, 0).value)
+    let selectedItem = selectRowLine(magicTable)
     result.magic = {
         Valuable(description: selectedItem): 1.uint8
     }.toTable

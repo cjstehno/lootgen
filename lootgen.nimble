@@ -13,4 +13,5 @@ bin           = @["lootgen"]
 
 requires "nim >= 1.2.6"
 requires "docopt >= 0.6.7"
-requires "polydice >= 0.1.0"
+requires "polydice >= 0.2.0"
+requires "gametables >= 0.1.0"

@@ -1,4 +1,4 @@
-roll,cp,sp,ep,gp,pp,gems,gem_value,art,art_value,magic,magic_table
+d100,cp,sp,ep,gp,pp,gems,gem_value,art,art_value,magic,magic_table
 1-4,2d6x100,2d6x1000,-,6d6x100,3d6x10,-,-,-,-,-,-
 5-10,2d6x100,2d6x1000,-,6d6x100,3d6x10,-,-,2d4,25,-,-
 11-16,2d6x100,2d6x1000,-,6d6x100,3d6x10,3d6,50,-,-,-,-
