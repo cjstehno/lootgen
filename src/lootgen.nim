@@ -9,20 +9,25 @@ let doc = """
 A tool for generating random 5e treasure.
 
 Usage:
-    lootgen individual [-n=<num>] (-c=<CR> | --cr=<CR>)
-    lootgen hoard [-n=<num>] (-c=<CR> | --cr=<CR>)
-    lootgen coins [-n=<num>] <dice>
-    lootgen art [-n=<num>] [25 | 250 | 750 | 2500 | 7500]
-    lootgen gems [-n=<num>] [10 | 50 | 100 | 500 | 1000 | 5000]
+    lootgen individual [-n=<num>] <cr>
+    lootgen hoard [-n=<num>] <cr>
+    lootgen coins [-n=<num>] [<dice>]
+    lootgen art [-n=<num>] [<art_value>]
+    lootgen gems [-n=<num>] [<gem_value>]
     lootgen magic [-n=<num>] [<table>]
     lootgen (-h | --help)
     lootgen --version
 
 Options:
-    -c=<CR> --cr=<CR>   The challenge rating of the creature.
     -n=<num>            The number of times to generate loot (defaults to 1).
     -h --help           Show this screen.
     --version           Show version.
+
+Arguments:
+    art_value           The value of the art to be selected (25, 250, 750, 2500, 7500). Random if omitted.
+    cr                  The challenge rating of the creature(s).
+    dice                The dice roll definition (d100 if omitted).
+    gem_value           The value of the gems to be selected (10, 50, 100, 500, 1000, 5000). Random if omitted.
 """
 
 const individual_0_4 = staticRead"../tables/individual-0-4.csv"
@@ -140,12 +145,12 @@ let args = docopt(doc, version = "Lootgen v0.1.0")
 let n = if args["-n"]: parseInt($args["-n"]) else: 1
 
 if args["individual"]:
-    let cr = parseUInt($args["--cr"]).uint8
+    let cr = parseUInt($args["<cr>"]).uint8
     for x in 0..(n-1):
         echo rollIndividual(cr)
 
 elif args["coins"]:
-    let dice = $args["<dice>"]
+    let dice = if args["<dice>"]: $args["<dice>"] else: "d100"
     for x in 0..(n-1):
         echo rollCoins(dice)
 
@@ -158,12 +163,11 @@ elif args["art"]:
         7500: art_7500
     }.toTable
 
-    var artValue = if args["25"]: 25
-    elif args["250"]: 250
-    elif args["750"]: 750
-    elif args["2500"]: 2500
-    elif args["7500"]: 7500
-    else: sample({25, 250, 750, 2500, 7500})
+    let allowedValues = {25, 250, 750, 2500, 7500}
+
+    var artValue = if args["<art_value>"]: parseInt($args["<art_value>"]) else: sample(allowedValues)
+    if not allowedValues.contains(artValue):
+        artValue = sample(allowedValues)
 
     for x in 0..(n-1):
         echo rollArt(artTables[artValue], artValue.uint)
@@ -178,13 +182,11 @@ elif args["gems"]:
         5000: gems_5000
     }.toTable
 
-    let gemValue = if args["10"]: 10
-    elif args["50"] : 50
-    elif args["100"]: 100
-    elif args["500"]: 500
-    elif args["1000"]: 1000
-    elif args["5000"]: 5000
-    else: sample({10, 50, 100, 500, 1000, 5000})
+    let allowedValues = {10, 50, 100, 500, 1000, 5000}
+
+    var gemValue = if args["<gem_value>"]: parseInt($args["<gem_value>"]) else: sample(allowedValues)
+    if not allowedValues.contains(gemValue):
+        gemValue = sample(allowedValues)
 
     let gemTable = gemTables[gemValue]
     for x in 0..(n-1):
