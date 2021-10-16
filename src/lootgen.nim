@@ -28,6 +28,7 @@ Arguments:
     cr                  The challenge rating of the creature(s).
     dice                The dice roll definition (d100 if omitted).
     gem_value           The value of the gems to be selected (10, 50, 100, 500, 1000, 5000). Random if omitted.
+    table               The magic item table to use (a-i). Random if omitted.
 """
 
 const individual_0_4 = staticRead"../tables/individual-0-4.csv"
@@ -80,14 +81,23 @@ type
 proc hash(x: Valuable): Hash =
     result = x.description.hash
 
-proc rollForItem(defn: string): uint =
-    if defn == "-":
-        return 0
+proc rollForValuable(valuableTable: string, valuableValue: uint): Valuable =
+    let selectedItem = selectRowLine(valuableTable)
+    result.value = valuableValue
+    result.description = selectedItem
+    return result
+
+proc rollForCoin(defn: string, randomInclusion: bool = false): uint =
+    if randomInclusion and rolling(1, 2, 0).value == 1:
+        if defn == "-":
+            return 0
+        else:
+            let diceMult = defn.split("x")
+            let rolled = roll(diceMult[0])
+            let multiplier = if diceMult.len > 1: parseInt(diceMult[1]) else: 1
+            return (rolled.value * multiplier).uint
     else:
-        let diceMult = defn.split("x")
-        let rolled = roll(diceMult[0])
-        let multiplier = if diceMult.len > 1: parseInt(diceMult[1]) else: 1
-        return (rolled.value * multiplier).uint
+        return 0
 
 proc rollIndividual(cr:uint8): Treasure =
     let selectedTable = if cr < 5:
@@ -102,24 +112,21 @@ proc rollIndividual(cr:uint8): Treasure =
     let selectedLine = selectRowLine(selectedTable)
     let parts = selectedLine.split(",")
     result.coins = Coins(
-        cp: rollForItem(parts[0]),
-        sp: rollForItem(parts[1]),
-        ep: rollForItem(parts[2]),
-        gp: rollForItem(parts[3]),
-        pp: rollForItem(parts[4]),
+        cp: rollForCoin(parts[0]),
+        sp: rollForCoin(parts[1]),
+        ep: rollForCoin(parts[2]),
+        gp: rollForCoin(parts[3]),
+        pp: rollForCoin(parts[4]),
     )
     return result
 
-proc includeItem(): bool =
-    rolling(1, 2, 0).value == 1
-
 proc rollCoins(dice: string): Treasure =
     result.coins = Coins(
-        cp: if includeItem(): rollForItem(dice) else: 0,
-        sp: if includeItem(): rollForItem(dice) else: 0,
-        ep: if includeItem(): rollForItem(dice) else: 0,
-        gp: if includeItem(): rollForItem(dice) else: 0,
-        pp: if includeItem(): rollForItem(dice) else: 0
+        cp: rollForCoin(dice, true),
+        sp: rollForCoin(dice, true),
+        ep: rollForCoin(dice, true),
+        gp: rollForCoin(dice, true),
+        pp: rollForCoin(dice, true)
     )
 
 proc rollArt(artTable: string, artValue: uint): Treasure =
@@ -128,17 +135,59 @@ proc rollArt(artTable: string, artValue: uint): Treasure =
         Valuable(value: artValue, description: selectedItem): 1.uint8
     }.toTable
 
-proc rollGems(gemTable: string, gemValue: uint): Treasure =
-    let selectedItem = selectRowLine(gemTable)
-    result.gems = {
-        Valuable(value: gemValue, description: selectedItem): 1.uint8
-    }.toTable
-
 proc rollMagic(magicTable: string): Treasure =
     let selectedItem = selectRowLine(magicTable)
     result.magic = {
         Valuable(description: selectedItem): 1.uint8
     }.toTable
+
+proc gems(gemValueDef: string): Treasure =
+    let gemTables = {
+        10: gems_10,
+        50: gems_50,
+        100: gems_100,
+        500: gems_500,
+        1000: gems_1000,
+        5000: gems_5000
+    }.toTable
+
+    const allowedValues = {10, 50, 100, 500, 1000, 5000}
+
+    var gemValue = if gemValueDef != "nil": parseInt(gemValueDef) else: sample(allowedValues)
+    if not allowedValues.contains(gemValue):
+        gemValue = sample(allowedValues)
+
+    let gems = rollForValuable(gemTables[gemValue], gemValue.uint)
+    result.gems[gems] = 1.uint8
+    return result
+
+#proc rollHoard(cr: uint8): Treasure =
+#    let selectedTable = if cr < 5:
+#        hoard_0_4
+#    elif cr < 11:
+#        hoard_5_10
+#    elif cr < 17:
+#        hoard_11_16
+#    else:
+#        hoard_17_up
+#
+#    let selectedLine = selectRowLine(selectedTable)
+#    let parts = selectedLine.split(",")
+#    # FIXME: parse results into treasure
+#    # cp,sp,ep,gp,pp,gems,gem_value,art,art_value,magic,magic_table
+#    result.coins = Coins(
+#        cp: rollForItem(parts[0]),
+#        sp: rollForItem(parts[1]),
+#        ep: rollForItem(parts[2]),
+#        gp: rollForItem(parts[3]),
+#        pp: rollForItem(parts[4]),
+#    )
+#
+#    let gemCount = if parts[5] != "-": parseInt(parts[5]) else: 0
+#    if gemCount > 0:
+#        for g in 0..(gemCount-1):
+#            # gems
+
 
 let args = docopt(doc, version = "Lootgen v0.1.0")
 
@@ -173,24 +222,8 @@ elif args["art"]:
         echo rollArt(artTables[artValue], artValue.uint)
 
 elif args["gems"]:
-    let gemTables = {
-        10: gems_10,
-        50: gems_50,
-        100: gems_100,
-        500: gems_500,
-        1000: gems_1000,
-        5000: gems_5000
-    }.toTable
-
-    let allowedValues = {10, 50, 100, 500, 1000, 5000}
-
-    var gemValue = if args["<gem_value>"]: parseInt($args["<gem_value>"]) else: sample(allowedValues)
-    if not allowedValues.contains(gemValue):
-        gemValue = sample(allowedValues)
-
-    let gemTable = gemTables[gemValue]
     for x in 0..(n-1):
-        echo rollGems(gemTable, gemValue.uint)
+        echo gems($args["<gem_value>"])
 
 elif args["magic"]:
     let magicTables = {
@@ -209,3 +242,8 @@ elif args["magic"]:
 
     for x in 0..(n-1):
         echo rollMagic(magicTables[magicTable])
+
+#elsif args["hoard"]:
+#    let cr = parseUInt($args["<cr>"]).uint8
+#    for x in 0..(n-1):
+#        echo rollHoard(cr)
